@@ -166,6 +166,20 @@ const uint32_t PAD[PAD_ROWS][PAD_ROW_MAX + 1] = {
     {0x308F, 0x3092, 0x3093, 0x30FC, 0},       // わをんー
 };
 
+// Variant levels per pad row, after the plain row in PAD.
+const uint32_t PICKER_EXTRA[PAD_ROWS][PICKER_LEVELS - 1][PAD_ROW_MAX + 2] = {
+    {{0x3041, 0x3043, 0x3045, 0x3047, 0x3049}, {}},                  // ぁぃぅぇぉ
+    {{0x304C, 0x304E, 0x3050, 0x3052, 0x3054}, {}},                  // がぎぐげご
+    {{0x3056, 0x3058, 0x305A, 0x305C, 0x305E}, {}},                  // ざじずぜぞ
+    {{0x3060, 0x3062, 0x3065, 0x3067, 0x3069}, {0x3063}},            // だぢづでど, っ
+    {{}, {}},                                                        // な
+    {{0x3070, 0x3073, 0x3076, 0x3079, 0x307C}, {0x3071, 0x3074, 0x3077, 0x307A, 0x307D}},  // ば.., ぱ..
+    {{}, {}},                                                        // ま
+    {{0x3083, 0x3085, 0x3087}, {}},                                  // ゃゅょ
+    {{}, {}},                                                        // ら
+    {{0x308E}, {}},                                                  // ゎ
+};
+
 constexpr uint32_t HIRA_FIRST = 0x3041;
 constexpr uint32_t HIRA_LAST = 0x3096;
 constexpr uint32_t KATA_OFFSET = 0x60;
@@ -211,6 +225,13 @@ const Entry* entries() { return ENTRIES; }
 size_t entryCount() { return ENTRY_COUNT; }
 const Group* groups() { return GROUPS; }
 const uint32_t* padRow(const int row) { return PAD[row]; }
+
+const uint32_t* pickerRow(const int row, const int level) {
+  if (row < 0 || row >= PAD_ROWS || level < 0 || level >= PICKER_LEVELS) return nullptr;
+  if (level == 0) return PAD[row];
+  const uint32_t* extra = PICKER_EXTRA[row][level - 1];
+  return extra[0] != 0 ? extra : nullptr;
+}
 
 size_t encodeUtf8(const uint32_t cp, char* out) {
   if (cp < 0x80) {

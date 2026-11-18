@@ -58,4 +58,10 @@ constexpr int PAD_ROWS = 10;
 constexpr int PAD_ROW_MAX = 4;
 const uint32_t* padRow(int row);
 
+// Every kana a pad row offers when "pick from list" is on: the row itself,
+// then its dakuten / handakuten / small forms. `level` 0 is the plain row;
+// returns nullptr past the row's last level. Rows end at the first 0.
+constexpr int PICKER_LEVELS = 3;
+const uint32_t* pickerRow(int row, int level);
+
 }  // namespace kana

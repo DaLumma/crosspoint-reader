@@ -58,6 +58,9 @@ void KanaSetupActivity::rebuildRows() {
   rows[ROW_DIRECTION].value = kana::directionLabel(config.direction);
   rows[ROW_ANSWER].label = "Answer with";
   rows[ROW_ANSWER].value = kana::answerModeLabel(config.answer);
+  rows[ROW_KANA_KEYS].label = "Kana keys";
+  rows[ROW_KANA_KEYS].value = kana::kanaKeyStyleLabel(config.kanaKeys);
+  rows[ROW_KANA_KEYS].enabled = config.answer == kana::AnswerMode::Keyboard;  // the kana pad only
   rows[ROW_COUNT].label = "Questions";
   rows[ROW_COUNT].value = countValue;
 
@@ -89,6 +92,11 @@ void KanaSetupActivity::activateIndex(const int index) {
       break;
     case ROW_ANSWER:
       config.answer = static_cast<kana::AnswerMode>((static_cast<int>(config.answer) + 1) % kana::ANSWER_MODE_COUNT);
+      break;
+    case ROW_KANA_KEYS:
+      if (config.answer != kana::AnswerMode::Keyboard) return;
+      config.kanaKeys =
+          static_cast<kana::KanaKeyStyle>((static_cast<int>(config.kanaKeys) + 1) % kana::KANA_KEY_STYLE_COUNT);
       break;
     case ROW_COUNT:
       config.countIndex = static_cast<uint8_t>((config.countIndex + 1) % kana::QUESTION_COUNT_OPTIONS);

@@ -15,7 +15,7 @@ class KanaSetupActivity final : public UiListActivity {
  private:
   // Row layout: fixed option rows, then per script an "all" row and one row
   // per group.
-  enum Row : int { ROW_START = 0, ROW_DIRECTION, ROW_ANSWER, ROW_COUNT, ROW_FIRST_SCRIPT };
+  enum Row : int { ROW_START = 0, ROW_DIRECTION, ROW_ANSWER, ROW_KANA_KEYS, ROW_COUNT, ROW_FIRST_SCRIPT };
   static constexpr int ROWS_PER_SCRIPT = 1 + kana::GROUP_COUNT;
   static constexpr int TOTAL_ROWS = ROW_FIRST_SCRIPT + kana::SCRIPT_COUNT * ROWS_PER_SCRIPT;
 

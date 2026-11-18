@@ -75,4 +75,31 @@ TEST(KanaData, ModifierKeyCyclesLikeAPhonePad) {
   EXPECT_EQ(modified("ん"), "ん");
 }
 
+TEST(KanaData, PickerListsEveryFormOfARow) {
+  // た row: plain, dakuten, then small っ.
+  EXPECT_EQ(utf8(kana::pickerRow(3, 0)[2]), "つ");
+  EXPECT_EQ(utf8(kana::pickerRow(3, 1)[2]), "づ");
+  EXPECT_EQ(utf8(kana::pickerRow(3, 2)[0]), "っ");
+  EXPECT_EQ(kana::pickerRow(3, 2)[1], 0u);
+  // は row has dakuten and handakuten; な row has nothing extra.
+  EXPECT_EQ(utf8(kana::pickerRow(5, 2)[0]), "ぱ");
+  EXPECT_EQ(kana::pickerRow(4, 1), nullptr);
+  EXPECT_EQ(kana::pickerRow(10, 0), nullptr);
+  // Every variant is a ゛゜小 form of some plain kana in the same row.
+  for (int row = 0; row < kana::PAD_ROWS; ++row) {
+    for (int level = 1; level < kana::PICKER_LEVELS; ++level) {
+      const uint32_t* cps = kana::pickerRow(row, level);
+      if (!cps) continue;
+      for (int col = 0; col <= kana::PAD_ROW_MAX && cps[col] != 0; ++col) {
+        bool reachable = false;
+        for (int b = 0; b <= kana::PAD_ROW_MAX && kana::padRow(row)[b] != 0 && !reachable; ++b) {
+          uint32_t cp = kana::padRow(row)[b];
+          for (int step = 0; step < 3 && !reachable; ++step) reachable = (cp = kana::modifierNext(cp)) == cps[col];
+        }
+        EXPECT_TRUE(reachable) << "row " << row << " level " << level << " col " << col;
+      }
+    }
+  }
+}
+
 }  // namespace

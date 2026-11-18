@@ -53,6 +53,8 @@ class KanaQuizActivity final : public Activity, private UiAppHost {
   void buildKeys();
   void handleKey(int index);
   void handleKanaPadKey(int index);
+  void handlePickerKey(int index);
+  void closePicker();
   void submitAnswer();
   void advance();
   void showSummary();
@@ -85,6 +87,8 @@ class KanaQuizActivity final : public Activity, private UiAppHost {
   int padLen = 0;
   int padLastKey = -1;  // multi-tap key that may still cycle the last kana
   int padCycle = 0;
+  int pickerRow = -1;  // pad row whose kana are listed ("pick from list"), or -1
+  uint32_t pickerCps[MAX_KEYS] = {};
   char keyLabels[MAX_KEYS][8] = {};
   freeink::ui::KeyGridKey keys[MAX_KEYS]{};
   uint8_t keyRows = 0;

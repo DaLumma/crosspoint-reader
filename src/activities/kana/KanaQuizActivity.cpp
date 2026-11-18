@@ -37,6 +37,11 @@ constexpr int KANA_MODIFIER = 12;
 constexpr int KANA_OK = 15;
 const int8_t KANA_PAD_ROW[KANA_ROWS * KANA_COLS] = {0, 1, 2, -1, 3, 4, 5, -1, 6, 7, 8, -1, -1, 9, -1, -1};
 
+// "Pick from list": one key row per variant level of the tapped pad row, and
+// a full-width Back button under them (ACTION_KEY with this value).
+constexpr uint8_t PICKER_COLS = kana::PAD_ROW_MAX + 1;
+constexpr int16_t PICKER_BACK = 99;
+
 // Summary buttons, by id.
 constexpr int SUMMARY_MISSED = 0;
 constexpr int SUMMARY_NEW = 1;
@@ -164,6 +169,7 @@ void KanaQuizActivity::prepareQuestion() {
   padLen = 0;
   padLastKey = -1;
   padCycle = 0;
+  pickerRow = -1;
   selected = 0;
   buttonFocus = false;
   if (pad == Pad::Choice) buildChoices();
@@ -225,6 +231,34 @@ void KanaQuizActivity::buildKeys() {
     keys[ROMAJI_DELETE].kind = fui::KeyKind::Delete;
     keys[ROMAJI_OK].label = "OK";
     keys[ROMAJI_OK].kind = fui::KeyKind::Ok;
+  } else if (pickerRow >= 0) {
+    // As wide as the row's longest level, so short rows (やゆよ) get big keys.
+    int levels = 0;
+    int widest = 1;
+    for (; levels < kana::PICKER_LEVELS; ++levels) {
+      const uint32_t* cps = kana::pickerRow(pickerRow, levels);
+      if (!cps) break;
+      int n = 0;
+      while (n < PICKER_COLS && cps[n] != 0) ++n;
+      if (n > widest) widest = n;
+    }
+    keyCols = static_cast<uint8_t>(widest);
+    keyRows = static_cast<uint8_t>(levels);
+    for (int i = 0; i < keyRows * keyCols; ++i) {
+      keys[i].value = static_cast<int16_t>(i);
+      keys[i].kind = fui::KeyKind::Disabled;
+      pickerCps[i] = 0;
+    }
+    for (int level = 0; level < levels; ++level) {
+      const uint32_t* cps = kana::pickerRow(pickerRow, level);
+      for (int col = 0; col < keyCols && cps[col] != 0; ++col) {
+        const int i = level * keyCols + col;
+        pickerCps[i] = kana::toScript(cps[col], script);
+        keyLabels[i][kana::encodeUtf8(pickerCps[i], keyLabels[i])] = '\0';
+        keys[i].label = keyLabels[i];
+        keys[i].kind = fui::KeyKind::Normal;
+      }
+    }
   } else {
     keyRows = KANA_ROWS;
     keyCols = KANA_COLS;
@@ -278,7 +312,31 @@ void KanaQuizActivity::handleKey(const int index) {
   requestUpdate();
 }
 
+void KanaQuizActivity::closePicker() {
+  app.clearTapFlash();  // the key set changes; the flash would land on another key
+  pickerRow = -1;
+  buildKeys();
+  requestUpdate();
+}
+
+void KanaQuizActivity::handlePickerKey(const int index) {
+  if (index == PICKER_BACK) {
+    closePicker();
+    return;
+  }
+  if (index < 0 || index >= keyRows * keyCols) return;
+  if (pickerCps[index] == 0) return;
+  if (padLen < PAD_TEXT_MAX) padText[padLen++] = pickerCps[index];
+  padLastKey = -1;
+  updateTypedText();
+  closePicker();
+}
+
 void KanaQuizActivity::handleKanaPadKey(const int index) {
+  if (pickerRow >= 0) {
+    handlePickerKey(index);
+    return;
+  }
   if (index < 0 || index >= KANA_ROWS * KANA_COLS) return;
   const Script script = questions[current].script;
   switch (index) {
@@ -303,6 +361,13 @@ void KanaQuizActivity::handleKanaPadKey(const int index) {
     default: {
       const int row = KANA_PAD_ROW[index];
       if (row < 0) return;
+      if (config.kanaKeys == kana::KanaKeyStyle::Picker) {
+        app.clearTapFlash();
+        pickerRow = row;
+        buildKeys();
+        requestUpdate();
+        return;
+      }
       const uint32_t* cycle = kana::padRow(row);
       int cycleLen = 0;
       while (cycleLen <= kana::PAD_ROW_MAX && cycle[cycleLen] != 0) ++cycleLen;
@@ -456,6 +521,10 @@ void KanaQuizActivity::loop() {
   using Button = MappedInputManager::Button;
   if (mappedInput.wasReleased(Button::Back)) {
     RenderLock lock(*this);
+    if (phase == Phase::Asking && pickerRow >= 0) {
+      closePicker();
+      return;
+    }
     if (phase == Phase::Summary || correctCount + wrongCount == 0) {
       finish();
     } else {
@@ -628,9 +697,19 @@ void KanaQuizActivity::buildQuizScreen(UiScreen& screen) {
     props.selectedIndex = static_cast<int16_t>(buttonFocus ? selected : -1);
     uiTarget.setFont(KANA_SLOT, KANA_44_FONT_ID);
   }
+  if (pad == Pad::Kana && pickerRow >= 0) {
+    fui::ButtonProps back;
+    back.label = "Back";
+    back.action = ACTION_KEY;
+    back.value = PICKER_BACK;
+    back.text = center;
+    back.radius = 6;
+    back.styles = fui::defaultKeyStyles();
+    screen.button(back, screen.takeBottom(static_cast<int16_t>(lh + 28), screen.theme().spaceMd));
+  }
   const fui::Rect grid = screen.body();
   fui::keyGrid(screen.frame(), grid, props);
-  if (pad == Pad::Kana) {
+  if (pad == Pad::Kana && pickerRow < 0) {
     // ゛゜ over 小, in the modifier key's cell (keyGrid's cell geometry).
     const int16_t cellW = static_cast<int16_t>((grid.width - (keyCols - 1) * props.gap) / keyCols);
     const int16_t cellH = static_cast<int16_t>((grid.height - (keyRows - 1) * props.gap) / keyRows);
