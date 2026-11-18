@@ -45,6 +45,12 @@
 #include "activities/settings/SdFirmwareUpdateActivity.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
+#if CROSSPOINT_KANA_PRACTICE
+#include <builtinFonts/kana_20.h>
+#include <builtinFonts/kana_44.h>
+
+#include "kana/KanaFonts.h"
+#endif
 #include "platform/UsbSerialJtagHandoff.h"
 #include "util/ButtonNavigator.h"
 #include "util/PluginEvents.h"
@@ -109,6 +115,13 @@ EpdFontFamily ui10FontFamily(10, &ui10RegularFont, &ui10BoldFont);
 EpdFont ui12RegularFont(&ubuntu_12_regular);
 EpdFont ui12BoldFont(&ubuntu_12_bold);
 EpdFontFamily ui12FontFamily(12, &ui12RegularFont, &ui12BoldFont);
+
+#if CROSSPOINT_KANA_PRACTICE
+EpdFont kana20Font(&kana_20);
+EpdFontFamily kana20FontFamily(20, &kana20Font);
+EpdFont kana44Font(&kana_44);
+EpdFontFamily kana44FontFamily(44, &kana44Font);
+#endif
 
 // Definitions for SilentRestart.h. RTC_NOINIT survives ESP.restart() but not power loss.
 RTC_NOINIT_ATTR uint32_t silentRebootMagic;
@@ -543,6 +556,10 @@ void setupDisplayAndFonts(bool seamless = false) {
   renderer.insertFont(UI_10_FONT_ID, ui10FontFamily);
   renderer.insertFont(UI_12_FONT_ID, ui12FontFamily);
   renderer.insertFont(SMALL_FONT_ID, smallFontFamily);
+#if CROSSPOINT_KANA_PRACTICE
+  renderer.insertFont(KANA_20_FONT_ID, kana20FontFamily);
+  renderer.insertFont(KANA_44_FONT_ID, kana44FontFamily);
+#endif
 
   // Discover and load SD card fonts
   sdFontSystem.begin(renderer);

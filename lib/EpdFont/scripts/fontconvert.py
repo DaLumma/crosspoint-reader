@@ -25,6 +25,7 @@ parser.add_argument("--compress", dest="compress", action="store_true", help="Co
 parser.add_argument("--zopfli", dest="zopfli", action="store_true", help="Use Zopfli for the DEFLATE backend instead of zlib. Produces standard raw-DEFLATE streams (decoded unchanged by the on-device uzlib inflater), typically a few percent smaller than zlib -9, at the cost of much slower compression. Requires --compress and the 'zopfli' package.")
 parser.add_argument("--glyph-x-nudge", dest="glyph_x_nudges", action="append", default=[], metavar="CODEPOINT,DX", help="Shift one glyph's outline DX/64 px sideways before rasterising (repeatable). For a stem that straddles a pixel boundary: in 1-bit mode both of its faint edge pixels turn black and the stem comes out a pixel too wide.")
 parser.add_argument("--force-autohint", dest="force_autohint", action="store_true", help="Force FreeType auto-hinter instead of native font hinting. Improves stem width consistency for fonts with weak or no native TrueType hints.")
+parser.add_argument("--only-additional-intervals", dest="only_additional_intervals", action="store_true", help="Export only Basic Latin plus the --additional-intervals, skipping the default script blocks. For small single-purpose fonts (e.g. the kana practice font).")
 parser.add_argument("--pnum", dest="pnum", action="store_true", help="Use proportional numerals (pnum OpenType feature) instead of default tabular figures. Reduces visual gaps between digits in running prose.")
 args = parser.parse_args()
 
@@ -142,6 +143,9 @@ intervals = [
     # Replacement Character
     (0xFFFD, 0xFFFD),
 ]
+
+if args.only_additional_intervals:
+    intervals = [(0x0000, 0x007F)]
 
 add_ints = []
 if args.additional_intervals:

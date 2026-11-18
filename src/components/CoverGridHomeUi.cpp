@@ -17,6 +17,9 @@
 #include "icons/settings2.h"
 #include "icons/transfer.h"
 #include "util/BookProgress.h"
+#if CROSSPOINT_KANA_PRACTICE
+#include "kana/KanaFonts.h"
+#endif
 
 namespace fui = freeink::ui;
 namespace {
@@ -283,9 +286,16 @@ void CoverGridHomeUi::drawGrid(UiScreen& screen) {
 }
 
 void CoverGridHomeUi::drawTabs(UiScreen& screen, fui::Rect rect) {
+#if CROSSPOINT_KANA_PRACTICE
+  // nullptr: the kana practice tab, drawn as a kana glyph below.
+  static constexpr const uint8_t* ICONS[] = {FolderIcon, LibraryIcon, BlocksIcon, TransferIcon, nullptr, Settings2Icon};
+#else
   static constexpr const uint8_t* ICONS[] = {FolderIcon, LibraryIcon, BlocksIcon, TransferIcon, Settings2Icon};
+#endif
+  constexpr int TAB_COUNT = sizeof(ICONS) / sizeof(ICONS[0]);
+  static_assert(TAB_COUNT <= std::tuple_size<decltype(tabItems)>::value, "tabItems too small");
   int count = 0;
-  for (int i = 0; i < 5; ++i) {
+  for (int i = 0; i < TAB_COUNT; ++i) {
     if (i == 2 && slotTab == SlotTab::NONE) continue;
     auto& tab = tabItems[count];
     tab.value = books->size() + count;
@@ -305,6 +315,16 @@ void CoverGridHomeUi::drawTabs(UiScreen& screen, fui::Rect rect) {
     const int index = tab.value - static_cast<int>(self.books->size());
     const int icon = self.slotTab == SlotTab::NONE && index >= 2 ? index + 1 : index;
     const uint8_t* bitmap = icon == 2 && self.slotTab == SlotTab::OPDS ? BookIcon : ICONS[icon];
+#if CROSSPOINT_KANA_PRACTICE
+    if (!bitmap) {
+      static constexpr const char* KANA_TAB_GLYPH = "\xE3\x81\x82";  // あ
+      const int w = self.renderer.getTextWidth(KANA_20_FONT_ID, KANA_TAB_GLYPH);
+      const int h = self.renderer.getLineHeight(KANA_20_FONT_ID);
+      self.renderer.drawText(KANA_20_FONT_ID, iconRect.x + (iconRect.width - w) / 2,
+                             iconRect.y + (iconRect.height - h) / 2, KANA_TAB_GLYPH);
+      return true;
+    }
+#endif
     self.renderer.drawIcon(bitmap, iconRect.x, iconRect.y, iconRect.width);
     return true;
   };

@@ -25,9 +25,15 @@
 #include "RecentBooksStore.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
+#if CROSSPOINT_KANA_PRACTICE
+#include "activities/kana/KanaSetupActivity.h"
+#endif
 
 int HomeActivity::getMenuItemCount() const {
   int count = 4;  // File Browser, Library, File transfer, Settings
+#if CROSSPOINT_KANA_PRACTICE
+  count++;
+#endif
   if (!recentBooks.empty()) {
     count += recentBooks.size();
   }
@@ -336,6 +342,11 @@ void HomeActivity::loop() {
       case HomeMenuItem::FILE_TRANSFER:
         onFileTransferOpen();
         break;
+#if CROSSPOINT_KANA_PRACTICE
+      case HomeMenuItem::KANA_PRACTICE:
+        onKanaPracticeOpen();
+        break;
+#endif
       case HomeMenuItem::SETTINGS_MENU:
         onSettingsOpen();
         break;
@@ -552,6 +563,10 @@ void HomeActivity::render(RenderLock&&) {
   std::vector<const char*> menuItems = {tr(STR_BROWSE_FILES), tr(STR_LIBRARY), tr(STR_FILE_TRANSFER),
                                         tr(STR_SETTINGS_TITLE)};
   std::vector<UIIcon> menuIcons = {Folder, Library, Transfer, Settings};
+#if CROSSPOINT_KANA_PRACTICE
+  menuItems.insert(menuItems.end() - 1, "Kana practice");
+  menuIcons.insert(menuIcons.end() - 1, Text);
+#endif
 
   if (slotItem() != HomeMenuItem::NONE) {
     menuItems.insert(menuItems.begin() + 2, hasPlugins ? tr(STR_PLUGINS) : tr(STR_OPDS_BROWSER));
@@ -597,6 +612,13 @@ void HomeActivity::onLibraryOpen() { activityManager.goToLibrary(); }
 void HomeActivity::onSettingsOpen() { activityManager.goToSettings(); }
 
 void HomeActivity::onFileTransferOpen() { activityManager.goToFileTransfer(); }
+
+#if CROSSPOINT_KANA_PRACTICE
+void HomeActivity::onKanaPracticeOpen() {
+  startActivityForResult(std::make_unique<KanaSetupActivity>(renderer, mappedInput),
+                         [this](const ActivityResult&) { requestUpdate(); });
+}
+#endif
 
 void HomeActivity::onOpdsBrowserOpen() { activityManager.goToBrowser(); }
 

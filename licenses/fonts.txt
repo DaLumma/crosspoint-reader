@@ -10,6 +10,20 @@ These notices do not grant permission to use those names for modified fonts.
 Source revisions and font URLs are in lib/EpdFont/scripts/sd-fonts.yaml.
 
 ========================================================================
+Noto Sans JP (kana practice fonts: kana_20, kana_44)
+Source: https://raw.githubusercontent.com/notofonts/noto-cjk/main/Sans/LICENSE
+========================================================================
+
+Copyright 2014-2021 Adobe (http://www.adobe.com/), with Reserved Font
+Name 'Source'.
+
+This Font Software is licensed under the SIL Open Font License, Version 1.1.
+This license is also available with a FAQ at:
+http://scripts.sil.org/OFL
+
+Full terms: see the shared OFL 1.1 section at the end of this file.
+
+========================================================================
 Libron
 Source: https://raw.githubusercontent.com/nicoverbruggen/libron/main/LICENSE
 ========================================================================
