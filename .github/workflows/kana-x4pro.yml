@@ -1,0 +1,91 @@
+name: Build X4 Pro firmware (kana practice)
+
+# Fork workflow: builds the X4 Pro firmware (with kana practice) on every push
+# to the kana branch or develop, keeps it as a run artifact, and refreshes the
+# "kana-latest" pre-release so the newest .bin has a stable download link.
+
+on:
+  push:
+    branches: [feature/kana-practice, develop]
+  workflow_dispatch:
+
+permissions:
+  contents: write  # update the kana-latest pre-release
+
+concurrency:
+  group: kana-x4pro-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      PIO_ENV: x4pro-gh_release
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: "latest"
+          enable-cache: false
+
+      # Same core and helper packages as ci.yml.
+      - name: Install PlatformIO Core
+        run: |
+          uv pip install --system -U https://github.com/pioarduino/platformio-core/archive/refs/tags/v6.1.19.zip
+          uv pip install --system -U "littlefs-python>=0.16.0" "fatfs-ng>=0.1.14" "pyyaml>=6.0.2" \
+            "rich-click>=1.8.6" "zopfli>=0.2.2" "intelhex>=2.3.0" "rich>=14.0.0" "urllib3<2" \
+            "cryptography>=45.0.3" "certifi>=2025.8.3" "ecdsa>=0.19.1" "bitstring>=4.3.1" \
+            "reedsolo>=1.5.3,<1.8" "esp-idf-size>=2.0.0" "esp-coredump>=1.14.0"
+
+      - name: Cache PlatformIO packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          key: pio-kana-${{ runner.os }}-${{ env.PIO_ENV }}-${{ hashFiles('platformio.ini', 'scripts/patch_pioarduino_cache.py') }}
+          restore-keys: pio-kana-${{ runner.os }}-${{ env.PIO_ENV }}-
+
+      - name: Pin pioarduino core inside the platform penv
+        run: |
+          set -euo pipefail
+          pio pkg install -e "$PIO_ENV"
+          uv pip install --python ~/.platformio/penv/bin/python "pioarduino==6.1.19"
+
+      - name: Build firmware
+        run: |
+          set -euo pipefail
+          pio run -e "$PIO_ENV" | tee pio.log
+          mkdir -p dist
+          SHORT_SHA="$(git rev-parse --short HEAD)"
+          echo "SHORT_SHA=$SHORT_SHA" >> "$GITHUB_ENV"
+          cp ".pio/build/$PIO_ENV/firmware.bin" "dist/crosspoint-kana-x4pro-$SHORT_SHA.bin"
+          {
+            echo "## X4 Pro firmware ($SHORT_SHA)"
+            grep -E "^(RAM|Flash):" pio.log || true
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload firmware artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: crosspoint-kana-x4pro-${{ env.SHORT_SHA }}
+          path: dist/*.bin
+          if-no-files-found: error
+
+      - name: Update kana-latest pre-release
+        if: github.ref == 'refs/heads/feature/kana-practice'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cp "dist/crosspoint-kana-x4pro-$SHORT_SHA.bin" dist/crosspoint-kana-x4pro.bin
+          notes="X4 Pro firmware with kana practice, built from ${GITHUB_SHA} on feature/kana-practice. Flash crosspoint-kana-x4pro.bin."
+          gh release delete kana-latest --yes --cleanup-tag 2>/dev/null || true
+          gh release create kana-latest dist/crosspoint-kana-x4pro.bin \
+            --prerelease --title "Kana practice (X4 Pro, latest)" --notes "$notes" --target "$GITHUB_SHA"
