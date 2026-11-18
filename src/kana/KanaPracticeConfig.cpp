@@ -53,9 +53,9 @@ void PracticeConfig::save() const {
 const char* directionLabel(const Direction direction) {
   switch (direction) {
     case Direction::KanaToRomaji:
-      return "Kana \xE2\x86\x92 romaji";
+      return "Kana to romaji";
     case Direction::RomajiToKana:
-      return "Romaji \xE2\x86\x92 kana";
+      return "Romaji to kana";
     case Direction::Both:
       return "Both (mixed)";
   }

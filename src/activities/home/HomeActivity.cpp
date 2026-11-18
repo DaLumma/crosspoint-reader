@@ -565,7 +565,7 @@ void HomeActivity::render(RenderLock&&) {
   std::vector<UIIcon> menuIcons = {Folder, Library, Transfer, Settings};
 #if CROSSPOINT_KANA_PRACTICE
   menuItems.insert(menuItems.end() - 1, "Kana practice");
-  menuIcons.insert(menuIcons.end() - 1, Text);
+  menuIcons.insert(menuIcons.end() - 1, Book);
 #endif
 
   if (slotItem() != HomeMenuItem::NONE) {

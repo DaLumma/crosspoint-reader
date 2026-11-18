@@ -239,7 +239,7 @@ void KanaQuizActivity::buildKeys() {
     keys[KANA_DELETE].kind = fui::KeyKind::Delete;
     keys[KANA_NEXT].label = "\xE2\x86\x92";               // →
     keys[KANA_CLEAR].label = "C";
-    keys[KANA_MODIFIER].label = "\xE3\x82\x9B\xE3\x82\x9C\xE5\xB0\x8F";  // ゛゜小
+    // Label drawn on two lines by drawModifierLabel(); three glyphs do not fit one.
     keys[14].kind = fui::KeyKind::Disabled;
     keys[KANA_OK].label = "OK";
     keys[KANA_OK].kind = fui::KeyKind::Ok;
@@ -495,12 +495,14 @@ void KanaQuizActivity::quizScreen(UiScreen& screen, void* user) {
 void KanaQuizActivity::drawStatus(UiScreen& screen, const fui::Rect rect) {
   fui::TextStyle left{KANA_SLOT, fui::TextAlign::Left};
   fui::TextStyle right{KANA_SLOT, fui::TextAlign::Right};
-  if (phase != Phase::Summary) screen.target().text(rect, statusLeft, left);
+  if (phase == Phase::Summary) return;
+  screen.target().text(rect, statusLeft, left);
   screen.target().text(rect, statusRight, right);
 }
 
 void KanaQuizActivity::drawPrompt(UiScreen& screen, const fui::Rect rect) {
-  const int16_t hintH = promptHint[0] ? uiTarget.lineHeight(KANA_SLOT) : 0;
+  // Keyboard modes show the hint as the empty field's placeholder instead.
+  const int16_t hintH = promptHint[0] && pad == Pad::Choice ? uiTarget.lineHeight(KANA_SLOT) : 0;
   uiTarget.setFont(KANA_SLOT, KANA_44_FONT_ID);
   const fui::Rect big{rect.x, rect.y, rect.width, static_cast<int16_t>(rect.height - hintH)};
   screen.target().text(big, prompt, fui::TextStyle{KANA_SLOT, fui::TextAlign::Center});
@@ -529,6 +531,7 @@ void KanaQuizActivity::drawSummary(UiScreen& screen, fui::Rect) {
     props.value = static_cast<int16_t>(i);
     props.text = center;
     props.radius = 6;
+    props.styles = fui::defaultKeyStyles();  // bordered like the quiz keys
     if (i == selected) props.state = fui::StateSelected;
     screen.button(props, screen.takeBottom(buttonH, screen.theme().spaceMd));
   }
@@ -536,10 +539,16 @@ void KanaQuizActivity::drawSummary(UiScreen& screen, fui::Rect) {
   if (summaryMissed[0]) {
     screen.target().text(screen.takeTop(lh, screen.theme().spaceSm), "Missed:",
                          fui::TextStyle{KANA_SLOT, fui::TextAlign::Left});
-    const fui::Rect list = screen.body();
+    // text() centers its block vertically; size the rect to the wrapped lines
+    // so the list sits right under its heading.
+    const fui::Rect body = screen.body();
     fui::TextStyle wrap{KANA_SLOT, fui::TextAlign::Left};
-    wrap.maxLines = static_cast<uint8_t>(list.height / (lh > 0 ? lh : 1));
-    screen.target().text(list, summaryMissed, wrap);
+    const int maxLines = body.height / (lh > 0 ? lh : 1);
+    const int width = uiTarget.measureText(KANA_SLOT, summaryMissed, wrap).width;
+    int lines = width <= body.width ? 1 : width / body.width + 2;  // +1 rounding, +1 word-wrap slack
+    if (lines > maxLines) lines = maxLines;
+    wrap.maxLines = static_cast<uint8_t>(lines);
+    screen.target().text(fui::Rect{body.x, body.y, body.width, static_cast<int16_t>(lines * lh)}, summaryMissed, wrap);
   } else if (correctCount > 0) {
     screen.target().text(screen.body(), "No mistakes!", center);
   }
@@ -570,8 +579,12 @@ void KanaQuizActivity::buildQuizScreen(UiScreen& screen) {
   if (phase == Phase::Asking && lastCorrect && current > 0) screen.target().text(banner, resultLine, center);
 
   const int16_t bodyH = screen.body().height;
-  drawPrompt(screen, screen.takeTop(static_cast<int16_t>(bodyH * (pad == Pad::Choice ? 32 : 24) / 100),
-                                    screen.theme().spaceLg));
+  uiTarget.setFont(KANA_SLOT, KANA_44_FONT_ID);
+  const int16_t promptLh = uiTarget.lineHeight(KANA_SLOT);
+  uiTarget.setFont(KANA_SLOT, KANA_20_FONT_ID);
+  const int16_t promptMin = static_cast<int16_t>(promptLh + (promptHint[0] && pad == Pad::Choice ? lh : 0));
+  const int16_t promptShare = static_cast<int16_t>(bodyH * (pad == Pad::Choice ? 32 : 24) / 100);
+  drawPrompt(screen, screen.takeTop(promptShare > promptMin ? promptShare : promptMin, screen.theme().spaceLg));
 
   if (phase == Phase::Feedback) {
     screen.target().text(screen.takeTop(lh, screen.theme().spaceMd), resultLine, center);
@@ -590,9 +603,17 @@ void KanaQuizActivity::buildQuizScreen(UiScreen& screen) {
   if (pad != Pad::Choice) {
     const fui::Rect field = screen.takeTop(static_cast<int16_t>(lh + 20), screen.theme().spaceLg);
     screen.target().stroke(field, fui::Paint::solid(fui::Color::Black), 2, 6);
-    char shown[sizeof(typed) + 2];
-    snprintf(shown, sizeof(shown), "%s_", typed);
-    screen.target().text(field, shown, center);
+    if (typed[0] == '\0' && promptHint[0]) {
+      char placeholder[sizeof(promptHint) + 8];
+      snprintf(placeholder, sizeof(placeholder), "type %s", promptHint);
+      fui::TextStyle hint = center;
+      hint.color = fui::Color::DarkGray;
+      screen.target().text(field, placeholder, hint);
+    } else {
+      char shown[sizeof(typed) + 2];
+      snprintf(shown, sizeof(shown), "%s_", typed);
+      screen.target().text(field, shown, center);
+    }
   }
 
   fui::KeyGridProps props;
@@ -607,7 +628,22 @@ void KanaQuizActivity::buildQuizScreen(UiScreen& screen) {
     props.selectedIndex = static_cast<int16_t>(buttonFocus ? selected : -1);
     uiTarget.setFont(KANA_SLOT, KANA_44_FONT_ID);
   }
-  fui::keyGrid(screen.frame(), screen.body(), props);
+  const fui::Rect grid = screen.body();
+  fui::keyGrid(screen.frame(), grid, props);
+  if (pad == Pad::Kana) {
+    // ゛゜ over 小, in the modifier key's cell (keyGrid's cell geometry).
+    const int16_t cellW = static_cast<int16_t>((grid.width - (keyCols - 1) * props.gap) / keyCols);
+    const int16_t cellH = static_cast<int16_t>((grid.height - (keyRows - 1) * props.gap) / keyRows);
+    const int col = KANA_MODIFIER % keyCols;
+    const int row = KANA_MODIFIER / keyCols;
+    const int16_t x = static_cast<int16_t>(grid.x + col * (cellW + props.gap));
+    const int16_t top = static_cast<int16_t>(grid.y + row * (cellH + props.gap));
+    // Line boxes overlap; the glyph ink is well inside them.
+    const int16_t y1 = static_cast<int16_t>(top + cellH * 3 / 10 - lh / 2);
+    const int16_t y2 = static_cast<int16_t>(top + cellH * 7 / 10 - lh / 2);
+    screen.target().text(fui::Rect{x, y1, cellW, lh}, "\xE3\x82\x9B\xE3\x82\x9C", center);  // ゛゜
+    screen.target().text(fui::Rect{x, y2, cellW, lh}, "\xE5\xB0\x8F", center);              // 小
+  }
   uiTarget.setFont(KANA_SLOT, uiScaleSpec().titleFontId);
 }
 
