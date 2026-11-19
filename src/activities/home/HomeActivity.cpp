@@ -26,13 +26,14 @@
 #include "components/UITheme.h"
 #include "fontIds.h"
 #if CROSSPOINT_KANA_PRACTICE
+#include "activities/kana/KanaChartActivity.h"
 #include "activities/kana/KanaSetupActivity.h"
 #endif
 
 int HomeActivity::getMenuItemCount() const {
   int count = 4;  // File Browser, Library, File transfer, Settings
 #if CROSSPOINT_KANA_PRACTICE
-  count++;
+  count += 2;  // Kana practice, Kana chart
 #endif
   if (!recentBooks.empty()) {
     count += recentBooks.size();
@@ -346,6 +347,9 @@ void HomeActivity::loop() {
       case HomeMenuItem::KANA_PRACTICE:
         onKanaPracticeOpen();
         break;
+      case HomeMenuItem::KANA_CHART:
+        onKanaChartOpen();
+        break;
 #endif
       case HomeMenuItem::SETTINGS_MENU:
         onSettingsOpen();
@@ -566,6 +570,8 @@ void HomeActivity::render(RenderLock&&) {
 #if CROSSPOINT_KANA_PRACTICE
   menuItems.insert(menuItems.end() - 1, "Kana practice");
   menuIcons.insert(menuIcons.end() - 1, Book);
+  menuItems.insert(menuItems.end() - 1, "Kana chart");
+  menuIcons.insert(menuIcons.end() - 1, Bookmark);
 #endif
 
   if (slotItem() != HomeMenuItem::NONE) {
@@ -616,6 +622,11 @@ void HomeActivity::onFileTransferOpen() { activityManager.goToFileTransfer(); }
 #if CROSSPOINT_KANA_PRACTICE
 void HomeActivity::onKanaPracticeOpen() {
   startActivityForResult(std::make_unique<KanaSetupActivity>(renderer, mappedInput),
+                         [this](const ActivityResult&) { requestUpdate(); });
+}
+
+void HomeActivity::onKanaChartOpen() {
+  startActivityForResult(std::make_unique<KanaChartActivity>(renderer, mappedInput),
                          [this](const ActivityResult&) { requestUpdate(); });
 }
 #endif

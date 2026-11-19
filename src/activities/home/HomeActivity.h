@@ -60,6 +60,8 @@ class HomeActivity final : public Activity {
 #if CROSSPOINT_KANA_PRACTICE
     if (item == HomeMenuItem::KANA_PRACTICE) return i;
     ++i;
+    if (item == HomeMenuItem::KANA_CHART) return i;
+    ++i;
 #endif
     if (item == HomeMenuItem::SETTINGS_MENU) return i;
     return 0;
@@ -74,6 +76,7 @@ class HomeActivity final : public Activity {
     if (idx == i++) return HomeMenuItem::FILE_TRANSFER;
 #if CROSSPOINT_KANA_PRACTICE
     if (idx == i++) return HomeMenuItem::KANA_PRACTICE;
+    if (idx == i++) return HomeMenuItem::KANA_CHART;
 #endif
     if (idx == i) return HomeMenuItem::SETTINGS_MENU;
     return HomeMenuItem::NONE;
@@ -87,6 +90,7 @@ class HomeActivity final : public Activity {
   void onPluginsOpen();
 #if CROSSPOINT_KANA_PRACTICE
   void onKanaPracticeOpen();
+  void onKanaChartOpen();
 #endif
 
   int getMenuItemCount() const;

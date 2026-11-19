@@ -287,8 +287,9 @@ void CoverGridHomeUi::drawGrid(UiScreen& screen) {
 
 void CoverGridHomeUi::drawTabs(UiScreen& screen, fui::Rect rect) {
 #if CROSSPOINT_KANA_PRACTICE
-  // nullptr: the kana practice tab, drawn as a kana glyph below.
-  static constexpr const uint8_t* ICONS[] = {FolderIcon, LibraryIcon, BlocksIcon, TransferIcon, nullptr, Settings2Icon};
+  // nullptr: the kana practice and kana chart tabs, drawn as kana glyphs below.
+  static constexpr const uint8_t* ICONS[] = {FolderIcon, LibraryIcon, BlocksIcon, TransferIcon,
+                                             nullptr,    nullptr,     Settings2Icon};
 #else
   static constexpr const uint8_t* ICONS[] = {FolderIcon, LibraryIcon, BlocksIcon, TransferIcon, Settings2Icon};
 #endif
@@ -317,7 +318,8 @@ void CoverGridHomeUi::drawTabs(UiScreen& screen, fui::Rect rect) {
     const uint8_t* bitmap = icon == 2 && self.slotTab == SlotTab::OPDS ? BookIcon : ICONS[icon];
 #if CROSSPOINT_KANA_PRACTICE
     if (!bitmap) {
-      static constexpr const char* KANA_TAB_GLYPH = "\xE3\x81\x82";  // あ
+      // あ = kana practice, ア = kana chart (the tab after it).
+      const char* KANA_TAB_GLYPH = icon == 4 ? "\xE3\x81\x82" : "\xE3\x82\xA2";
       const int w = self.renderer.getTextWidth(KANA_20_FONT_ID, KANA_TAB_GLYPH);
       const int h = self.renderer.getLineHeight(KANA_20_FONT_ID);
       self.renderer.drawText(KANA_20_FONT_ID, iconRect.x + (iconRect.width - w) / 2,
